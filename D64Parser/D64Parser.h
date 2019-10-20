@@ -134,7 +134,7 @@ struct D64Parser {
 	}
 
 	void printAll() {
-		cout << diskname << "\n";
+		cout << "\t\t" << diskname << "\n";
 		for (int i = 0; i < entries.size(); i ++) {
 			if (entries.at(i).available) {
 				cout << entries.at(i).file_type << "\t";
