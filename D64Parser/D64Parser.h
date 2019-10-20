@@ -56,7 +56,8 @@ struct D64Parser {
 	string FILE_TYPE[0x100];
 	unsigned char data[0xf0000];
 	string filename;
-	Entry entries[8];
+	string diskname;
+	std::vector<Entry> entries;
 	const uint32_t STARTS[41] = {
 		0,
 		0x00000, 0x01500, 0x02a00, 0x03f00, 0x05400, 0x06900, 0x07e00, 0x09300,
@@ -84,41 +85,46 @@ struct D64Parser {
 
 		//	init all available lines
 		uint32_t base_dir = 0x16600;
-		for (int i = 0; i < (8 * 0x20); i += 0x20) {
-			entries[i / 0x20].next_track = data[base_dir + i];
-			entries[i / 0x20].next_sector = data[base_dir + i + 1];
-			entries[i / 0x20].file_type = FILE_TYPE[data[base_dir + i + 2]];
-			entries[i / 0x20].start_track = data[base_dir + i + 3];
-			entries[i / 0x20].start_sector = data[base_dir + i + 4];
-			entries[i / 0x20].pet_name;
+		for (int i = 0; i < 0x1200; i += 0x20) {
+			Entry entry;
+			entry.next_track = data[base_dir + i];
+			entry.next_sector = data[base_dir + i + 1];
+			entry.file_type = FILE_TYPE[data[base_dir + i + 2]];
+			entry.start_track = data[base_dir + i + 3];
+			entry.start_sector = data[base_dir + i + 4];
+			entry.pet_name;
 			for (int j = 5; j < 0x15; j++) {
-				entries[i / 0x20].pet_name += data[base_dir + i + j];
+				entry.pet_name += data[base_dir + i + j];
 			}
-			entries[i / 0x20].sector_size = data[base_dir + i + 0x1e] + (data[base_dir + i + 0x1f] * 256);
-			entries[i / 0x20].available = (entries[i / 0x20].file_type != "");
+			entry.sector_size = data[base_dir + i + 0x1e] + (data[base_dir + i + 0x1f] * 256);
+			entry.available = (entry.file_type != "");
 			
-			entries[i / 0x20].sectors = 21;
-			if (entries[i / 0x20].start_track > 17 && entries[i / 0x20].start_track < 25)
-				entries[i / 0x20].sectors = 19;
-			else if (entries[i / 0x20].start_track > 24 && entries[i / 0x20].start_track < 31)
-				entries[i / 0x20].sectors = 18;
-			else if (entries[i / 0x20].start_track > 30)
-				entries[i / 0x20].sectors = 17;
-			entries[i / 0x20].adress_start = STARTS[entries[i / 0x20].start_track] + entries[i / 0x20].start_sector * 256;
-			entries[i / 0x20].adress_end = entries[i / 0x20].adress_start + entries[i / 0x20].sector_size * 256;
+			entry.sectors = 21;
+			if (entry.start_track > 17 && entry.start_track < 25)
+				entry.sectors = 19;
+			else if (entry.start_track > 24 && entry.start_track < 31)
+				entry.sectors = 18;
+			else if (entry.start_track > 30)
+				entry.sectors = 17;
+			entry.adress_start = STARTS[entry.start_track] + entry.start_sector * 256;
+			entry.adress_end = entry.adress_start + entry.sector_size * 256;
+			entries.push_back(entry);
+		}
+		for (uint8_t i = 0x90; i < 0xa0; i++) {
+			diskname += data[STARTS[18] + i];
 		}
 
 	}
 
 	std::vector<uint8_t> getData(uint8_t row_id) {
-		std::vector<uint8_t> ret(entries[row_id].sector_size * 0x100);
+		std::vector<uint8_t> ret(entries.at(row_id).sector_size * 0x100);
 		int c = 0;
-		uint32_t next_track = entries[row_id].start_track;
-		uint32_t next_sector = entries[row_id].start_sector;
-		while(c < entries[row_id].sector_size) {
+		uint32_t next_track = entries.at(row_id).start_track;
+		uint32_t next_sector = entries.at(row_id).start_sector;
+		while(c < entries.at(row_id).sector_size) {
 			uint32_t a_adr = STARTS[next_track] + next_sector * 256;
-			for (int i = 0; i < 256; i++) {
-				ret[c * 0x100 + i] = data[a_adr + i + 4];
+			for (int i = 0; i < 254; i++) {
+				ret[c * 254 + i] = data[a_adr + i + 2];
 			}
 			next_track = data[a_adr];
 			next_sector = data[a_adr + 1];
@@ -128,15 +134,16 @@ struct D64Parser {
 	}
 
 	void printAll() {
-		uint32_t base_dir = 0x16600;
-		for (int i = 0; i < 8; i ++) {
-			cout << entries[i].available << "\t";
-			cout << entries[i].file_type << "\t";
-			cout << hex << +entries[i].start_track;
-			cout << "/";
-			cout << hex << +entries[i].start_sector << "\t";
-			cout << entries[i].pet_name << "\t" << dec << entries[i].sector_size;
-			cout << "\t" << hex << entries[i].adress_start << " -> " << hex << entries[i].adress_end << "\n";
+		cout << diskname << "\n";
+		for (int i = 0; i < entries.size(); i ++) {
+			if (entries.at(i).available) {
+				cout << entries.at(i).file_type << "\t";
+				cout << hex << +entries.at(i).start_track;
+				cout << "/";
+				cout << hex << +entries.at(i).start_sector << "\t";
+				cout << entries.at(i).pet_name << "\t" << dec << entries.at(i).sector_size;
+				cout << "\t" << hex << entries.at(i).adress_start << " -> " << hex << entries.at(i).adress_end << "\n";
+			}
 		}
 	}
 };
