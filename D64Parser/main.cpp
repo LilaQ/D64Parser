@@ -14,8 +14,11 @@ int main()
 	parser.printAll();
 	
 	//	print out the whole data in hex
-	std::vector<uint8_t> r = parser.getData(0);
+	std::vector<uint8_t> r = parser.dirList();
 	for (int i = 0; i < r.size(); i++) {
-		//cout << hex << +r[i] << " ";
+		if (i % 0x10 == 0)
+			printf("\n");
+		printf("%02x ", r.at(i));
+		//cout << hex << +r[i];
 	}
 }
